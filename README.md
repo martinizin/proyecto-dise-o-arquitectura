@@ -1,164 +1,193 @@
-# Proyecto de Arquitectura de Software - E-commerce
+# Proyecto Arquitectura (Monorepo) — Sprint 1 (Base técnica)
 
-Sistema de comercio electrónico basado en microservicios para gestión de catálogo de productos y órdenes de compra.
+Este repositorio contiene la **base del ecosistema** para el proyecto de Arquitectura. En el **Sprint 1** se dejó lista la estructura del monorepo, la infraestructura base en Docker, el **API Gateway** funcionando (Spring Cloud Gateway) y el **Frontend** en React consumiendo únicamente el Gateway.
 
-## 🏗️ Arquitectura - Sprint 1
+> **Estado actual:** el Gateway y el Front ya levantan.  
+> Los servicios `Order` y `Catalog` (y la Lambda) se desarrollarán en los siguientes sprints.
 
-Este proyecto implementa una arquitectura de microservicios con los siguientes componentes:
+---
 
-- **Frontend**: Aplicación React + Vite para la interfaz de usuario
-- **API Gateway**: Spring Cloud Gateway para enrutamiento y punto de entrada único
-- **Infraestructura**: PostgreSQL, Redis, Elasticsearch y LocalStack (AWS local)
-- **Servicios** (en desarrollo): Catalog Service y Order Service
-- **Serverless** (planificado): AWS Lambda para procesamiento asíncrono
+## Stack y herramientas
 
-### Estado Actual
-En este Sprint 1 se ha completado:
-- ✅ Estructura del monorepo
-- ✅ Docker Compose con infraestructura base
-- ✅ API Gateway funcional con enrutamiento
-- ✅ Frontend funcional con integración al Gateway
-- ⏳ Placeholders para servicios y funciones Lambda
-
-## 📋 Requisitos
-
-Antes de comenzar, asegúrate de tener instalado:
-
-- **Java 17** o superior
-- **Maven 3.8+**
-- **Node.js 18+** y npm
-- **Docker Desktop** (para la infraestructura)
-
-## 🚀 Ejecución Local
-
-### 1. Levantar la infraestructura
-
-Primero, inicia los servicios de infraestructura con Docker Compose:
-
-```bash
-cd infra
-docker compose up -d
-```
-
-Esto levantará:
-- PostgreSQL (puerto 5432)
-- Redis (puerto 6379)
-- Elasticsearch (puerto 9200)
-- LocalStack (puerto 4566)
-
-### 2. Ejecutar el API Gateway
-
-**Opción A - Usando Maven:**
-```bash
-cd gateway
-mvn spring-boot:run
-```
-
-**Opción B - Usando IntelliJ IDEA:**
-1. Abre el proyecto `gateway/` en IntelliJ
-2. Ejecuta la clase `GatewayApplication.java`
-
-El Gateway estará disponible en `http://localhost:8080`
-
-### 3. Ejecutar el Frontend
-
-```bash
-cd frontend
-npm ci
-npm run dev
-```
-
-La aplicación estará disponible en `http://localhost:5173`
-
-## ⚙️ Variables de Entorno
+### Backend (Gateway)
+- **Java 17**
+- **Spring Boot + Spring Cloud Gateway**
+- **Maven**
+- **IDE:** IntelliJ IDEA
 
 ### Frontend
+- **React + Vite**
+- **Node 18+ (recomendado 20)**
+- **IDE:** VS Code (o IntelliJ IDEA si se prefiere)
 
-Crea un archivo `.env` en la carpeta `frontend/` basado en `.env.example`:
+### Infraestructura (local)
+- **Docker + Docker Compose**
+- Contenedores: **PostgreSQL**, **Redis**, **Elasticsearch**, **LocalStack (SQS)**
+
+---
+
+## Estructura del repositorio
+
+```
+/
+├── frontend/        # React + Vite (UI)
+├── gateway/         # Spring Cloud Gateway (API Gateway)
+├── infra/           # docker-compose (Postgres, Redis, Elastic, LocalStack)
+├── services/        # (placeholder) futuros microservicios Order/Catalog
+├── lambda/          # (placeholder) futura AWS Lambda
+├── docs/            # (placeholder) documentación y evidencias
+├── .env.example
+├── .gitignore
+└── README.md
+```
+
+---
+
+## Puertos utilizados (local)
+
+| Componente | Puerto |
+|----------|--------|
+| Frontend (Vite) | `5173` |
+| API Gateway | `8080` |
+| Order Service (futuro) | `8081` |
+| Catalog Service (futuro) | `8082` |
+| PostgreSQL | `5432` |
+| Redis | `6379` |
+| Elasticsearch | `9200` |
+| LocalStack (SQS) | `4566` |
+
+---
+
+## Variables de entorno
+
+### 1) Archivo raíz: `.env.example`
+En la raíz hay un archivo `.env.example` con la configuración de puertos y servicios.  
+Copia y crea tu `.env` local (NO se sube al repo):
+
+```bash
+cp .env.example .env
+```
+
+### 2) Frontend: `frontend/.env`
+
+Crea `frontend/.env` con:
 
 ```env
 VITE_API_URL=http://localhost:8080
 ```
 
-### Gateway
+> El Front **debe consumir SIEMPRE** el Gateway, no los microservicios directamente.
 
-El archivo `gateway/src/main/resources/application.properties` ya contiene la configuración necesaria.
+---
 
-## 🔌 Puertos Utilizados
+## Levantar el proyecto (paso a paso)
 
-| Servicio         | Puerto | URL                        |
-|------------------|--------|----------------------------|
-| Frontend         | 5173   | http://localhost:5173      |
-| API Gateway      | 8080   | http://localhost:8080      |
-| Order Service    | 8081   | http://localhost:8081      |
-| Catalog Service  | 8082   | http://localhost:8082      |
-| PostgreSQL       | 5432   | localhost:5432             |
-| Redis            | 6379   | localhost:6379             |
-| Elasticsearch    | 9200   | http://localhost:9200      |
-| LocalStack       | 4566   | http://localhost:4566      |
+### 1) Levantar infraestructura base (Docker)
 
-## 🧪 Pruebas Rápidas
-
-### Verificar el Gateway
+Desde la raíz del repo:
 
 ```bash
-# Health check
-curl http://localhost:8080/actuator/health
+docker compose --env-file .env -f infra/docker-compose.yml up -d
+docker ps
 ```
 
-### Rutas configuradas (servicios aún no implementados)
+Verificaciones rápidas:
 
-- **Órdenes**: `http://localhost:8080/api/orders/**` → Order Service (8081)
-- **Catálogo**: `http://localhost:8080/api/catalog/**` → Catalog Service (8082)
+* Elasticsearch: `http://localhost:9200`
+* LocalStack: `http://localhost:4566`
 
-### Verificar el Frontend
+---
 
-Abre `http://localhost:5173` en tu navegador. Deberías ver la interfaz de la aplicación.
+### 2) Ejecutar el API Gateway (Spring Cloud Gateway)
 
-### Verificar infraestructura
+#### Opción A: IntelliJ IDEA
+
+1. Abrir la carpeta `gateway/` como proyecto Maven.
+2. Ejecutar `GatewayApplication`.
+
+#### Opción B: Terminal (desde `gateway/`)
 
 ```bash
-# PostgreSQL
-docker exec -it postgres-db psql -U postgres
-
-# Redis
-docker exec -it redis-cache redis-cli ping
-
-# Elasticsearch
-curl http://localhost:9200
-
-# LocalStack
-curl http://localhost:4566/_localstack/health
+mvn clean package
+mvn spring-boot:run
 ```
 
-## 🛣️ Próximos Pasos - Sprint 2
+Gateway quedará en:
 
-- [ ] Implementar Order Service con PostgreSQL
-- [ ] Implementar Catalog Service con PostgreSQL y cache Redis
-- [ ] Configurar cola SQS en LocalStack para procesamiento asíncrono
-- [ ] Implementar función Lambda para procesamiento de órdenes
-- [ ] Integrar Elasticsearch para búsqueda de productos
-- [ ] Agregar pruebas E2E
+* `http://localhost:8080`
 
-## 📁 Estructura del Proyecto
+---
 
-```
-proyecto-arquitectura/
-├── frontend/          # Aplicación React + Vite
-├── gateway/           # Spring Cloud Gateway
-├── infra/            # Docker Compose (PostgreSQL, Redis, etc.)
-├── services/         # Microservicios (Order, Catalog)
-├── lambda/           # Funciones AWS Lambda
-└── docs/             # Documentación adicional
+### 3) Ejecutar el Frontend (React + Vite)
+
+#### Opción A: VS Code (recomendado)
+
+Desde `frontend/`:
+
+```bash
+npm install
+npm run dev
 ```
 
-## 🤝 Contribuir
+Frontend quedará en:
 
-1. Crea una rama feature: `git checkout -b feature/nueva-funcionalidad`
-2. Realiza tus cambios y commitea: `git commit -m 'Agrega nueva funcionalidad'`
-3. Push a la rama: `git push origin feature/nueva-funcionalidad`
-4. Abre un Pull Request
+* `http://localhost:5173`
 
-## 📄 Licencia
+> Asegúrate de tener `VITE_API_URL=http://localhost:8080` en `frontend/.env`.
 
-Este proyecto es para fines educativos.
+---
+
+## Rutas configuradas en el Gateway (Sprint 1)
+
+En `gateway/src/main/resources/application.properties` se configuró:
+
+* `/api/orders/**` → `http://localhost:8081` (Order Service, pendiente)
+* `/api/catalog/**` → `http://localhost:8082` (Catalog Service, pendiente)
+
+Además:
+
+* **CORS habilitado** para `http://localhost:5173`.
+
+> En Sprint 1 el Gateway enruta, pero los servicios aún no existen; por eso estas rutas responderán error hasta que Julián implemente los microservicios.
+
+---
+
+## Qué se logró en el Sprint 1
+
+* Monorepo organizado y subido correctamente a GitHub.
+* Infraestructura base lista y reproducible con Docker Compose.
+* API Gateway funcionando con:
+  * puerto `8080`
+  * CORS para el frontend
+  * rutas base hacia servicios futuros
+* Frontend React + Vite funcionando y apuntando al Gateway.
+* Carpetas placeholder agregadas (`docs/`, `services/`, `lambda/`) para el roadmap del proyecto.
+
+---
+
+## Próximos pasos (Sprint 2 y 3)
+
+### Sprint 2
+
+* Crear cola SQS en LocalStack.
+* Publicar evento `OrderCreated` desde `Order Service`.
+* AWS Lambda Java consumiendo SQS (LocalStack) y actualizando estado a `NOTIFIED`.
+* Caché Redis en `Catalog Service`.
+* Postman E2E + OpenAPI actualizado.
+
+### Sprint 3
+
+* Indexación/búsqueda con Elasticsearch.
+* CI/CD (GitHub Actions) y monitoreo (Actuator + opcional Prom/Grafana).
+* Documentación completa:
+  * SwaggerHub (OpenAPI)
+  * C4 (IcePanel)
+  * Diagramas de Infraestructura/Despliegue
+  * Análisis arquitectónico (caché, balanceo, indexación, redundancia, disponibilidad, concurrencia, latencia, costo, performance, escalabilidad)
+
+---
+
+## Notas importantes
+
+* **No subir `.env`**: contiene configuración local y potencialmente datos sensibles.
+* Git no versiona carpetas vacías: por eso existen `.gitkeep` en `docs/`, `lambda/`, `services/`.
