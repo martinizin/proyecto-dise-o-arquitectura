@@ -303,6 +303,7 @@ docker compose -f infra/docker-compose.yml build
 
 | Documento | Descripcion |
 |-----------|-------------|
+| [GUIA_EXPOSICION.md](docs/GUIA_EXPOSICION.md) | **Guia completa para presentar/demostrar el proyecto** |
 | [ARQUITECTURA.md](docs/ARQUITECTURA.md) | Diagramas de arquitectura y patrones usados |
 | [INFRAESTRUCTURA.md](docs/INFRAESTRUCTURA.md) | Diagramas de infraestructura y despliegue |
 | [MONITOREO.md](docs/MONITOREO.md) | Stack de Prometheus y Grafana |
