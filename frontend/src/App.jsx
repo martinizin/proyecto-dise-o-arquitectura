@@ -13,13 +13,13 @@ export default function App() {
   const meta = useMemo(() => {
     switch (current) {
       case "orders":
-        return { title: "Pedidos", subtitle: "Diseño listo. Conexión API en Sprint 2." };
+        return { title: "Pedidos", subtitle: "CRUD completo + Eventos SQS + Lambda (estado NOTIFIED)" };
       case "catalog":
-        return { title: "Catálogo", subtitle: "UI preparada para stock e inventario." };
+        return { title: "Catálogo", subtitle: "Gestion de productos con cache Redis" };
       case "search":
-        return { title: "Búsqueda", subtitle: "Pantalla base para indexación (Sprint 3)." };
+        return { title: "Búsqueda", subtitle: "Busqueda full-text con Elasticsearch" };
       default:
-        return { title: "Dashboard", subtitle: "Resumen del ecosistema y estado del sprint." };
+        return { title: "Dashboard", subtitle: "Vista general del ecosistema de microservicios" };
     }
   }, [current]);
 

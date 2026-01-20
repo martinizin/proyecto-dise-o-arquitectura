@@ -2,6 +2,13 @@ package com.proyecto.catalog.controller;
 
 import com.proyecto.catalog.document.ProductDocument;
 import com.proyecto.catalog.search.ProductSearchService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,6 +20,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/catalog/search")
+@Tag(name = "Search", description = "API para busqueda de productos con Elasticsearch")
 public class SearchController {
 
     private final ProductSearchService searchService;
@@ -21,15 +29,25 @@ public class SearchController {
         this.searchService = searchService;
     }
 
-    /**
-     * Busqueda de productos por nombre.
-     * GET /catalog/search?q=texto
-     */
+    @Operation(
+        summary = "Buscar productos",
+        description = "Busca productos por nombre, estado de stock o precio maximo. " +
+            "Si no se proporcionan parametros, retorna todos los productos indexados."
+    )
+    @ApiResponse(
+        responseCode = "200",
+        description = "Busqueda realizada exitosamente",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = ProductDocument.class))
+    )
     @GetMapping
-    public List<ProductDocument> search(@RequestParam(name = "q", required = false) String query,
-                                        @RequestParam(name = "status", required = false) String status,
-                                        @RequestParam(name = "maxPrice", required = false) Double maxPrice) {
-        
+    public List<ProductDocument> search(
+        @Parameter(description = "Texto a buscar en el nombre del producto", example = "laptop")
+        @RequestParam(name = "q", required = false) String query,
+        @Parameter(description = "Estado de stock: OK, LOW, OUT_OF_STOCK", example = "OK")
+        @RequestParam(name = "status", required = false) String status,
+        @Parameter(description = "Precio maximo del producto", example = "500.00")
+        @RequestParam(name = "maxPrice", required = false) Double maxPrice
+    ) {
         if (query != null && !query.isBlank()) {
             return searchService.searchByName(query);
         }
@@ -46,10 +64,17 @@ public class SearchController {
         return searchService.getAllIndexed();
     }
 
-    /**
-     * Sincroniza todos los productos de PostgreSQL a Elasticsearch.
-     * POST /catalog/search/sync
-     */
+    @Operation(
+        summary = "Sincronizar productos a Elasticsearch",
+        description = "Sincroniza todos los productos de PostgreSQL al indice de Elasticsearch"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Sincronizacion completada exitosamente",
+            content = @Content(mediaType = "application/json")
+        )
+    })
     @PostMapping("/sync")
     public ResponseEntity<Map<String, Object>> syncProducts() {
         int count = searchService.syncAllProducts();
@@ -59,10 +84,15 @@ public class SearchController {
         ));
     }
 
-    /**
-     * Obtiene estadisticas del indice.
-     * GET /catalog/search/stats
-     */
+    @Operation(
+        summary = "Obtener estadisticas del indice",
+        description = "Retorna estadisticas del indice de Elasticsearch: total indexado, por estado de stock"
+    )
+    @ApiResponse(
+        responseCode = "200",
+        description = "Estadisticas obtenidas exitosamente",
+        content = @Content(mediaType = "application/json")
+    )
     @GetMapping("/stats")
     public ResponseEntity<Map<String, Object>> getStats() {
         List<ProductDocument> all = searchService.getAllIndexed();
@@ -79,10 +109,15 @@ public class SearchController {
         ));
     }
 
-    /**
-     * Limpia el indice de Elasticsearch.
-     * DELETE /catalog/search/index
-     */
+    @Operation(
+        summary = "Limpiar indice de Elasticsearch",
+        description = "Elimina todos los documentos del indice de productos"
+    )
+    @ApiResponse(
+        responseCode = "200",
+        description = "Indice limpiado exitosamente",
+        content = @Content(mediaType = "application/json")
+    )
     @DeleteMapping("/index")
     public ResponseEntity<Map<String, String>> clearIndex() {
         searchService.clearIndex();

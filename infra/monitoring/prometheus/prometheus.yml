@@ -1,0 +1,57 @@
+# Prometheus Configuration
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Alertmanager configuration (optional)
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Rule files (optional)
+rule_files: []
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: /metrics
+
+  # API Gateway
+  - job_name: 'gateway'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+    scrape_interval: 10s
+
+  # Order Service
+  - job_name: 'order-service'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['host.docker.internal:8081']
+    scrape_interval: 10s
+
+  # Catalog Service
+  - job_name: 'catalog-service'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['host.docker.internal:8082']
+    scrape_interval: 10s
+
+  # PostgreSQL (if using postgres_exporter)
+  # - job_name: 'postgresql'
+  #   static_configs:
+  #     - targets: ['postgres-exporter:9187']
+
+  # Redis (if using redis_exporter)
+  # - job_name: 'redis'
+  #   static_configs:
+  #     - targets: ['redis-exporter:9121']
+
+  # Elasticsearch (if using elasticsearch_exporter)
+  # - job_name: 'elasticsearch'
+  #   static_configs:
+  #     - targets: ['elasticsearch-exporter:9114']

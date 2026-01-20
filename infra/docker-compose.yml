@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-appuser}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-apppass}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks: [appnet]
@@ -41,9 +41,51 @@ services:
       - "${LOCALSTACK_PORT:-4566}:4566"
     networks: [appnet]
 
+  # ========================================
+  # Monitoring Stack
+  # ========================================
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: app-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks: [appnet]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: app-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks: [appnet]
+
 networks:
   appnet:
 
 volumes:
   pgdata:
   esdata:
+  prometheus_data:
+  grafana_data:

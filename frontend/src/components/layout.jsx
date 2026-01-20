@@ -12,8 +12,8 @@ export default function Layout({ current, onNavigate, title, subtitle, children 
         <div className="brand">
           <div className="brand-badge" />
           <div>
-            <div className="brand-title">Sistema Arquitectura</div>
-            <div className="brand-sub">Sprint 1 — UI + Gateway</div>
+            <div className="brand-title">Microservicios</div>
+            <div className="brand-sub">Arquitectura Completa</div>
           </div>
         </div>
 
@@ -34,15 +34,22 @@ export default function Layout({ current, onNavigate, title, subtitle, children 
         </nav>
 
         <div className="card" style={{ marginTop: "auto" }}>
-          <h3 className="h3">Estado Sprint 1</h3>
+          <h3 className="h3">Servicios Activos</h3>
           <div className="small">
-            UI lista. Gateway listo. Servicios y Lambda: próximos sprints.
+            Todos los componentes del ecosistema estan operativos.
           </div>
-          <div className="row" style={{ marginTop: "var(--space-3)" }}>
-            <span className="badge ok">✅ Front</span>
-            <span className="badge ok">✅ Gateway</span>
-            <span className="badge warn">⏳ Services</span>
-            <span className="badge warn">⏳ Lambda</span>
+          <div className="row" style={{ marginTop: "var(--space-3)", flexWrap: "wrap" }}>
+            <span className="badge ok">Gateway :8080</span>
+            <span className="badge ok">Orders :8081</span>
+            <span className="badge ok">Catalog :8082</span>
+          </div>
+          <div className="row" style={{ marginTop: "var(--space-2)", flexWrap: "wrap" }}>
+            <span className="badge ok">PostgreSQL</span>
+            <span className="badge ok">Redis</span>
+            <span className="badge ok">Elasticsearch</span>
+          </div>
+          <div className="row" style={{ marginTop: "var(--space-2)" }}>
+            <span className="badge ok">SQS + Lambda</span>
           </div>
         </div>
       </aside>
@@ -54,7 +61,7 @@ export default function Layout({ current, onNavigate, title, subtitle, children 
             <p className="p">{subtitle}</p>
           </div>
           <div className="row">
-            <span className="badge">localhost</span>
+            <span className="badge ok">Online</span>
             <span className="badge">Gateway :8080</span>
             <span className="badge">Front :5173</span>
           </div>

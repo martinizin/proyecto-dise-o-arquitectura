@@ -1,0 +1,793 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Proyecto Arquitectura - API Unificada",
+    "description": "API Gateway que expone los microservicios del ecosistema de e-commerce. Incluye servicios de gestion de ordenes (Order Service), catalogo de productos (Catalog Service) con cache Redis, y busqueda full-text (Search) con Elasticsearch.\n\n## Arquitectura\n- **API Gateway**: Punto de entrada centralizado (Spring Cloud Gateway)\n- **Order Service**: Gestion de ordenes con notificaciones via SQS/Lambda\n- **Catalog Service**: CRUD de productos con cache Redis\n- **Search Service**: Busqueda full-text con Elasticsearch\n\n## Tecnologias\n- Spring Boot 3.x\n- PostgreSQL (persistencia)\n- Redis (cache)\n- Elasticsearch (busqueda)\n- AWS SQS + Lambda (mensajeria serverless)\n- Docker (contenedores)",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Equipo de Desarrollo",
+      "email": "dev@proyecto.com"
+    },
+    "license": {
+      "name": "MIT License",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080/api",
+      "description": "API Gateway (produccion local)"
+    },
+    {
+      "url": "http://localhost:8081",
+      "description": "Order Service (desarrollo directo)"
+    },
+    {
+      "url": "http://localhost:8082",
+      "description": "Catalog Service (desarrollo directo)"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Orders",
+      "description": "API para gestion de ordenes de compra"
+    },
+    {
+      "name": "Catalog",
+      "description": "API para gestion de productos del catalogo"
+    },
+    {
+      "name": "Search",
+      "description": "API para busqueda de productos con Elasticsearch"
+    }
+  ],
+  "paths": {
+    "/orders": {
+      "get": {
+        "tags": ["Orders"],
+        "summary": "Obtener todas las ordenes",
+        "description": "Retorna una lista con todas las ordenes registradas en el sistema",
+        "operationId": "getAllOrders",
+        "responses": {
+          "200": {
+            "description": "Lista de ordenes obtenida exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Order"
+                  }
+                },
+                "example": [
+                  {
+                    "id": 1,
+                    "customerName": "Juan Perez",
+                    "createdAt": "2024-01-15T10:30:00",
+                    "status": "CREATED",
+                    "total": 150.50
+                  },
+                  {
+                    "id": 2,
+                    "customerName": "Maria Garcia",
+                    "createdAt": "2024-01-15T11:45:00",
+                    "status": "NOTIFIED",
+                    "total": 299.99
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Orders"],
+        "summary": "Crear nueva orden",
+        "description": "Crea una nueva orden y publica un evento a la cola SQS para notificacion asincrona via Lambda",
+        "operationId": "createOrder",
+        "requestBody": {
+          "description": "Datos de la orden a crear",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderCreate"
+              },
+              "example": {
+                "customerName": "Juan Perez",
+                "total": 150.50
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Orden creada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                },
+                "example": {
+                  "id": 1,
+                  "customerName": "Juan Perez",
+                  "createdAt": "2024-01-15T10:30:00",
+                  "status": "CREATED",
+                  "total": 150.50
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos de orden invalidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders/{id}": {
+      "get": {
+        "tags": ["Orders"],
+        "summary": "Obtener orden por ID",
+        "description": "Busca y retorna una orden especifica por su identificador",
+        "operationId": "getOrderById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la orden",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "example": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Orden encontrada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Orden no encontrada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "error": "Not Found",
+                  "message": "Orden con ID 999 no encontrada"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders/{id}/status": {
+      "patch": {
+        "tags": ["Orders"],
+        "summary": "Actualizar estado de orden",
+        "description": "Actualiza el estado de una orden existente. Usado por Lambda para marcar como NOTIFIED despues de procesar el mensaje SQS.",
+        "operationId": "updateOrderStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID de la orden",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "example": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Nuevo estado de la orden",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StatusUpdate"
+              },
+              "example": {
+                "status": "NOTIFIED"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Estado actualizado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Order"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Estado invalido o no proporcionado"
+          },
+          "404": {
+            "description": "Orden no encontrada"
+          }
+        }
+      }
+    },
+    "/catalog/products": {
+      "get": {
+        "tags": ["Catalog"],
+        "summary": "Obtener todos los productos",
+        "description": "Retorna la lista completa de productos. Los resultados se cachean en Redis para mejorar el rendimiento.",
+        "operationId": "getAllProducts",
+        "responses": {
+          "200": {
+            "description": "Lista de productos obtenida exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Product"
+                  }
+                },
+                "example": [
+                  {
+                    "id": 1,
+                    "name": "Laptop HP Pavilion",
+                    "price": 999.99,
+                    "stock": 50
+                  },
+                  {
+                    "id": 2,
+                    "name": "Mouse Logitech MX Master",
+                    "price": 99.99,
+                    "stock": 150
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Catalog"],
+        "summary": "Crear nuevo producto",
+        "description": "Crea un nuevo producto en el catalogo. Invalida el cache de productos en Redis.",
+        "operationId": "createProduct",
+        "requestBody": {
+          "description": "Datos del producto a crear",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductCreate"
+              },
+              "example": {
+                "name": "Teclado Mecanico RGB",
+                "price": 149.99,
+                "stock": 75
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Producto creado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Datos de producto invalidos"
+          }
+        }
+      }
+    },
+    "/catalog/products/{id}": {
+      "get": {
+        "tags": ["Catalog"],
+        "summary": "Obtener producto por ID",
+        "description": "Busca y retorna un producto especifico. El resultado se cachea en Redis.",
+        "operationId": "getProductById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del producto",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "example": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Producto encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Producto no encontrado"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Catalog"],
+        "summary": "Eliminar producto",
+        "description": "Elimina un producto del catalogo. Invalida el cache de productos en Redis.",
+        "operationId": "deleteProduct",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del producto a eliminar",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "example": 1
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Producto eliminado exitosamente"
+          },
+          "404": {
+            "description": "Producto no encontrado"
+          }
+        }
+      }
+    },
+    "/catalog/products/{id}/stock": {
+      "put": {
+        "tags": ["Catalog"],
+        "summary": "Actualizar stock de producto",
+        "description": "Actualiza la cantidad de stock de un producto. Invalida el cache de productos en Redis.",
+        "operationId": "updateProductStock",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID del producto",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "example": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Nueva cantidad de stock",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "integer",
+                "minimum": 0,
+                "example": 100
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Stock actualizado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Producto no encontrado"
+          }
+        }
+      }
+    },
+    "/catalog/search": {
+      "get": {
+        "tags": ["Search"],
+        "summary": "Buscar productos",
+        "description": "Busca productos por nombre, estado de stock o precio maximo usando Elasticsearch. Si no se proporcionan parametros, retorna todos los productos indexados.",
+        "operationId": "searchProducts",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Texto a buscar en el nombre del producto (busqueda full-text)",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "laptop"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Estado de stock del producto",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["OK", "LOW", "OUT_OF_STOCK"],
+              "example": "OK"
+            }
+          },
+          {
+            "name": "maxPrice",
+            "in": "query",
+            "description": "Precio maximo del producto",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "format": "double",
+              "example": 500.00
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Busqueda realizada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProductDocument"
+                  }
+                },
+                "example": [
+                  {
+                    "id": "1",
+                    "name": "Laptop HP Pavilion",
+                    "price": 999.99,
+                    "stock": 50,
+                    "stockStatus": "OK"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog/search/sync": {
+      "post": {
+        "tags": ["Search"],
+        "summary": "Sincronizar productos a Elasticsearch",
+        "description": "Sincroniza todos los productos de PostgreSQL al indice de Elasticsearch. Util despues de cargar datos iniciales o para reindexar.",
+        "operationId": "syncProducts",
+        "responses": {
+          "200": {
+            "description": "Sincronizacion completada exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncResponse"
+                },
+                "example": {
+                  "message": "Sincronizacion completada",
+                  "productsIndexed": 25
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog/search/stats": {
+      "get": {
+        "tags": ["Search"],
+        "summary": "Obtener estadisticas del indice",
+        "description": "Retorna estadisticas del indice de Elasticsearch: total de productos indexados y conteo por estado de stock.",
+        "operationId": "getSearchStats",
+        "responses": {
+          "200": {
+            "description": "Estadisticas obtenidas exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchStats"
+                },
+                "example": {
+                  "totalIndexed": 25,
+                  "inStock": 20,
+                  "lowStock": 3,
+                  "outOfStock": 2
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/catalog/search/index": {
+      "delete": {
+        "tags": ["Search"],
+        "summary": "Limpiar indice de Elasticsearch",
+        "description": "Elimina todos los documentos del indice de productos. Util para reiniciar el indice antes de una sincronizacion completa.",
+        "operationId": "clearSearchIndex",
+        "responses": {
+          "200": {
+            "description": "Indice limpiado exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Indice limpiado"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Order": {
+        "type": "object",
+        "description": "Entidad que representa una orden de compra",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "ID unico de la orden",
+            "readOnly": true,
+            "example": 1
+          },
+          "customerName": {
+            "type": "string",
+            "description": "Nombre del cliente",
+            "example": "Juan Perez"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Fecha y hora de creacion de la orden",
+            "readOnly": true,
+            "example": "2024-01-15T10:30:00"
+          },
+          "status": {
+            "type": "string",
+            "description": "Estado actual de la orden",
+            "enum": ["CREATED", "NOTIFIED", "PROCESSING", "COMPLETED"],
+            "example": "CREATED"
+          },
+          "total": {
+            "type": "number",
+            "format": "double",
+            "description": "Total de la orden en dolares",
+            "minimum": 0,
+            "example": 150.50
+          }
+        },
+        "required": ["customerName", "total"]
+      },
+      "OrderCreate": {
+        "type": "object",
+        "description": "Datos para crear una nueva orden",
+        "properties": {
+          "customerName": {
+            "type": "string",
+            "description": "Nombre del cliente",
+            "example": "Juan Perez"
+          },
+          "total": {
+            "type": "number",
+            "format": "double",
+            "description": "Total de la orden en dolares",
+            "minimum": 0,
+            "example": 150.50
+          }
+        },
+        "required": ["customerName", "total"]
+      },
+      "StatusUpdate": {
+        "type": "object",
+        "description": "Datos para actualizar el estado de una orden",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Nuevo estado de la orden",
+            "enum": ["CREATED", "NOTIFIED", "PROCESSING", "COMPLETED"],
+            "example": "NOTIFIED"
+          }
+        },
+        "required": ["status"]
+      },
+      "Product": {
+        "type": "object",
+        "description": "Producto del catalogo",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "ID unico del producto",
+            "readOnly": true,
+            "example": 1
+          },
+          "name": {
+            "type": "string",
+            "description": "Nombre del producto",
+            "example": "Laptop HP Pavilion"
+          },
+          "price": {
+            "type": "number",
+            "format": "double",
+            "description": "Precio del producto en dolares",
+            "minimum": 0,
+            "example": 999.99
+          },
+          "stock": {
+            "type": "integer",
+            "description": "Cantidad disponible en stock",
+            "minimum": 0,
+            "example": 50
+          }
+        },
+        "required": ["name", "price", "stock"]
+      },
+      "ProductCreate": {
+        "type": "object",
+        "description": "Datos para crear un nuevo producto",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Nombre del producto",
+            "example": "Teclado Mecanico RGB"
+          },
+          "price": {
+            "type": "number",
+            "format": "double",
+            "description": "Precio del producto en dolares",
+            "minimum": 0,
+            "example": 149.99
+          },
+          "stock": {
+            "type": "integer",
+            "description": "Cantidad inicial en stock",
+            "minimum": 0,
+            "example": 75
+          }
+        },
+        "required": ["name", "price", "stock"]
+      },
+      "ProductDocument": {
+        "type": "object",
+        "description": "Documento de producto indexado en Elasticsearch",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "ID del producto",
+            "example": "1"
+          },
+          "name": {
+            "type": "string",
+            "description": "Nombre del producto",
+            "example": "Laptop HP Pavilion"
+          },
+          "price": {
+            "type": "number",
+            "format": "double",
+            "description": "Precio del producto",
+            "example": 999.99
+          },
+          "stock": {
+            "type": "integer",
+            "description": "Cantidad en stock",
+            "example": 50
+          },
+          "stockStatus": {
+            "type": "string",
+            "description": "Estado del stock calculado automaticamente",
+            "enum": ["OK", "LOW", "OUT_OF_STOCK"],
+            "example": "OK"
+          }
+        }
+      },
+      "SyncResponse": {
+        "type": "object",
+        "description": "Respuesta de sincronizacion de productos",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Mensaje de confirmacion",
+            "example": "Sincronizacion completada"
+          },
+          "productsIndexed": {
+            "type": "integer",
+            "description": "Numero de productos sincronizados",
+            "example": 25
+          }
+        }
+      },
+      "SearchStats": {
+        "type": "object",
+        "description": "Estadisticas del indice de busqueda",
+        "properties": {
+          "totalIndexed": {
+            "type": "integer",
+            "description": "Total de productos indexados",
+            "example": 25
+          },
+          "inStock": {
+            "type": "integer",
+            "description": "Productos con stock disponible (status OK)",
+            "example": 20
+          },
+          "lowStock": {
+            "type": "integer",
+            "description": "Productos con stock bajo (status LOW)",
+            "example": 3
+          },
+          "outOfStock": {
+            "type": "integer",
+            "description": "Productos sin stock (status OUT_OF_STOCK)",
+            "example": 2
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "description": "Respuesta de error",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Tipo de error",
+            "example": "Not Found"
+          },
+          "message": {
+            "type": "string",
+            "description": "Mensaje descriptivo del error",
+            "example": "Recurso no encontrado"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Fecha y hora del error"
+          }
+        }
+      }
+    }
+  }
+}

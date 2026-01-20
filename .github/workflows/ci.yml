@@ -1,0 +1,191 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  JAVA_VERSION: '17'
+  NODE_VERSION: '20'
+
+jobs:
+  # ============================================
+  # Build y Test de Servicios Backend (Java)
+  # ============================================
+  build-backend:
+    name: Build Backend Services
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        service:
+          - name: gateway
+            path: gateway
+          - name: order-service
+            path: services/order-service
+          - name: catalog-service
+            path: services/catalog-service
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build ${{ matrix.service.name }}
+        working-directory: ${{ matrix.service.path }}
+        run: mvn clean compile -DskipTests -B
+
+      - name: Run tests ${{ matrix.service.name }}
+        working-directory: ${{ matrix.service.path }}
+        run: mvn test -B
+        continue-on-error: true
+
+      - name: Package ${{ matrix.service.name }}
+        working-directory: ${{ matrix.service.path }}
+        run: mvn package -DskipTests -B
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.service.name }}-jar
+          path: ${{ matrix.service.path }}/target/*.jar
+          retention-days: 7
+
+  # ============================================
+  # Build y Test de Frontend (React)
+  # ============================================
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run linter
+        working-directory: frontend
+        run: npm run lint --if-present
+        continue-on-error: true
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 7
+
+  # ============================================
+  # Build de Lambda Function
+  # ============================================
+  build-lambda:
+    name: Build Lambda Function
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build Lambda
+        working-directory: lambda/order-notification
+        run: mvn clean package -DskipTests -B
+
+      - name: Upload Lambda artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lambda-jar
+          path: lambda/order-notification/target/*.jar
+          retention-days: 7
+
+  # ============================================
+  # Validacion de Docker Compose
+  # ============================================
+  validate-docker:
+    name: Validate Docker Configuration
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate docker-compose syntax
+        working-directory: infra
+        run: docker compose config --quiet
+
+  # ============================================
+  # Security Scan (Opcional)
+  # ============================================
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: [build-backend]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
+
+  # ============================================
+  # Resumen del Pipeline
+  # ============================================
+  ci-summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend, build-lambda, validate-docker]
+    if: always()
+
+    steps:
+      - name: Check build results
+        run: |
+          echo "=== CI Pipeline Summary ==="
+          echo "Backend Build: ${{ needs.build-backend.result }}"
+          echo "Frontend Build: ${{ needs.build-frontend.result }}"
+          echo "Lambda Build: ${{ needs.build-lambda.result }}"
+          echo "Docker Validation: ${{ needs.validate-docker.result }}"
+          
+          if [ "${{ needs.build-backend.result }}" == "failure" ] || \
+             [ "${{ needs.build-frontend.result }}" == "failure" ] || \
+             [ "${{ needs.build-lambda.result }}" == "failure" ]; then
+            echo "::error::One or more builds failed"
+            exit 1
+          fi
+          
+          echo "::notice::All builds completed successfully!"

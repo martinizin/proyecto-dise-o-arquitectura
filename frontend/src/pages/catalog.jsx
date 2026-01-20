@@ -14,15 +14,28 @@ export default function Catalog() {
   const [filter, setFilter] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [newStock, setNewStock] = useState("");
+  const [lastFetch, setLastFetch] = useState(null);
+  const [cacheHint, setCacheHint] = useState(null);
 
   const fetchProducts = useCallback(async () => {
+    const startTime = Date.now();
     setLoading(true);
     setError(null);
     try {
       const data = await apiGet("/api/catalog/products");
+      const elapsed = Date.now() - startTime;
       setProducts(data);
+      setLastFetch(new Date().toLocaleTimeString());
+      
+      // Hint about cache based on response time
+      if (elapsed < 50) {
+        setCacheHint("Cache HIT (respuesta rapida)");
+      } else {
+        setCacheHint("Cache MISS o primera carga");
+      }
     } catch (err) {
       setError(err.message);
+      setCacheHint(null);
     } finally {
       setLoading(false);
     }
@@ -42,6 +55,7 @@ export default function Catalog() {
       await apiPut(`/api/catalog/products/${id}/stock`, parseInt(newStock));
       setEditingId(null);
       setNewStock("");
+      setCacheHint("Cache invalidado - proxima carga desde DB");
       await fetchProducts();
     } catch (err) {
       setError(err.message);
@@ -52,17 +66,63 @@ export default function Catalog() {
     p.name?.toLowerCase().includes(filter.toLowerCase())
   );
 
+  const lowStockCount = products.filter(p => p.stock > 0 && p.stock <= 5).length;
+  const outOfStockCount = products.filter(p => p.stock === 0).length;
+  const totalStock = products.reduce((sum, p) => sum + (p.stock || 0), 0);
+
   return (
     <div className="grid">
-      <section className="card" style={{ gridColumn: "span 12" }}>
-        <h3 className="h3">Catalogo</h3>
-        <p className="small">Conectado al API Gateway: <code>/api/catalog/products</code></p>
+      {/* Stats */}
+      <section className="card" style={{ gridColumn: "span 3", textAlign: "center" }}>
+        <div className="small">Total Productos</div>
+        <div style={{ fontSize: "2rem", fontWeight: "bold", margin: "var(--space-2) 0" }}>
+          {products.length}
+        </div>
+        <div className="small">en catalogo</div>
+      </section>
 
-        <div className="row" style={{ marginTop: "var(--space-4)" }}>
+      <section className="card" style={{ gridColumn: "span 3", textAlign: "center" }}>
+        <div className="small">Stock Total</div>
+        <div style={{ fontSize: "2rem", fontWeight: "bold", margin: "var(--space-2) 0" }}>
+          {totalStock}
+        </div>
+        <div className="small">unidades</div>
+      </section>
+
+      <section className="card" style={{ gridColumn: "span 3", textAlign: "center" }}>
+        <div className="small">Stock Bajo</div>
+        <div style={{ fontSize: "2rem", fontWeight: "bold", margin: "var(--space-2) 0" }}>
+          <span className={`badge ${lowStockCount > 0 ? "warn" : "ok"}`} style={{ fontSize: "1.5rem", padding: "var(--space-2) var(--space-4)" }}>
+            {lowStockCount}
+          </span>
+        </div>
+        <div className="small">productos</div>
+      </section>
+
+      <section className="card" style={{ gridColumn: "span 3", textAlign: "center" }}>
+        <div className="small">Sin Stock</div>
+        <div style={{ fontSize: "2rem", fontWeight: "bold", margin: "var(--space-2) 0" }}>
+          <span className={`badge ${outOfStockCount > 0 ? "bad" : "ok"}`} style={{ fontSize: "1.5rem", padding: "var(--space-2) var(--space-4)" }}>
+            {outOfStockCount}
+          </span>
+        </div>
+        <div className="small">productos</div>
+      </section>
+
+      {/* Main Table */}
+      <section className="card" style={{ gridColumn: "span 8" }}>
+        <div className="row" style={{ justifyContent: "space-between", marginBottom: "var(--space-3)" }}>
+          <div>
+            <h3 className="h3">Productos</h3>
+            <p className="small">Gestion de inventario con cache Redis</p>
+          </div>
+        </div>
+
+        <div className="row" style={{ marginBottom: "var(--space-4)" }}>
           <input 
             className="input" 
             placeholder="Filtrar por nombre" 
-            style={{ maxWidth: "400px" }}
+            style={{ maxWidth: "300px" }}
             aria-label="Filtrar productos"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
@@ -78,19 +138,21 @@ export default function Catalog() {
         </div>
 
         {error && (
-          <div className="small" style={{ marginTop: "var(--space-4)", color: "var(--red)" }}>
+          <div className="small" style={{ marginBottom: "var(--space-4)", color: "var(--bad)" }}>
             Error: {error}
           </div>
         )}
 
-        {loading && <p className="small" style={{ marginTop: "var(--space-4)" }}>Cargando productos...</p>}
-
-        {!loading && products.length === 0 && !error && (
-          <p className="small" style={{ marginTop: "var(--space-4)" }}>No hay productos en el catalogo.</p>
+        {loading && products.length === 0 && (
+          <p className="small">Cargando productos...</p>
         )}
 
-        {!loading && filteredProducts.length > 0 && (
-          <table className="table" style={{ marginTop: "var(--space-4)" }}>
+        {!loading && products.length === 0 && !error && (
+          <p className="small">No hay productos en el catalogo.</p>
+        )}
+
+        {filteredProducts.length > 0 && (
+          <table className="table">
             <thead>
               <tr>
                 <th>ID</th>
@@ -164,6 +226,64 @@ export default function Catalog() {
             No se encontraron productos que coincidan con "{filter}".
           </p>
         )}
+      </section>
+
+      {/* Cache Info */}
+      <section className="card" style={{ gridColumn: "span 4" }}>
+        <h3 className="h3">Cache Redis</h3>
+        <div className="small" style={{ marginBottom: "var(--space-4)" }}>
+          Sistema de cache distribuido para mejorar rendimiento
+        </div>
+
+        <div style={{ 
+          padding: "var(--space-3)", 
+          background: "var(--bg-secondary)", 
+          borderRadius: "var(--radius-md)",
+          marginBottom: "var(--space-3)"
+        }}>
+          <div className="small" style={{ marginBottom: "var(--space-2)" }}>
+            <strong>Ultima carga:</strong>
+          </div>
+          <div>{lastFetch || "---"}</div>
+          {cacheHint && (
+            <div className={`badge ${cacheHint.includes("HIT") ? "ok" : "warn"}`} style={{ marginTop: "var(--space-2)" }}>
+              {cacheHint}
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginBottom: "var(--space-4)" }}>
+          <strong className="small">Configuracion:</strong>
+          <ul className="small" style={{ marginTop: "var(--space-2)" }}>
+            <li>TTL: 5 minutos</li>
+            <li>Prefijo: <code>catalog:</code></li>
+            <li>Patron: Cache-Aside</li>
+          </ul>
+        </div>
+
+        <div style={{ 
+          padding: "var(--space-3)", 
+          background: "var(--bg-secondary)", 
+          borderRadius: "var(--radius-md)",
+          fontFamily: "monospace",
+          fontSize: "11px"
+        }}>
+          <strong>Comportamiento:</strong>
+          <div style={{ marginTop: "var(--space-2)" }}>
+            • GET → @Cacheable<br/>
+            • PUT stock → @CacheEvict<br/>
+            • Cache key: products::all
+          </div>
+        </div>
+
+        <div style={{ marginTop: "var(--space-4)" }}>
+          <strong className="small">Probar el cache:</strong>
+          <ol className="small" style={{ marginTop: "var(--space-2)" }}>
+            <li>Click "Refrescar" 2 veces</li>
+            <li>Segunda carga sera mas rapida (HIT)</li>
+            <li>Editar stock invalida el cache</li>
+          </ol>
+        </div>
       </section>
     </div>
   );

@@ -1,5 +1,6 @@
 package com.proyecto.catalog.document;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,22 +17,28 @@ import org.springframework.data.elasticsearch.annotations.FieldType;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "Documento de producto indexado en Elasticsearch")
 public class ProductDocument {
 
     @Id
+    @Schema(description = "ID del producto", example = "1")
     private String id;
 
     @Field(type = FieldType.Text, analyzer = "standard")
+    @Schema(description = "Nombre del producto", example = "Laptop HP Pavilion")
     private String name;
 
     @Field(type = FieldType.Double)
+    @Schema(description = "Precio del producto", example = "999.99")
     private Double price;
 
     @Field(type = FieldType.Integer)
+    @Schema(description = "Cantidad en stock", example = "50")
     private Integer stock;
 
     @Field(type = FieldType.Keyword)
-    private String stockStatus;  // OK, LOW, OUT_OF_STOCK
+    @Schema(description = "Estado del stock", example = "OK", allowableValues = {"OK", "LOW", "OUT_OF_STOCK"})
+    private String stockStatus;
 
     /**
      * Crea un ProductDocument desde un Product de JPA.

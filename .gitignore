@@ -88,3 +88,4 @@ pnpm-debug.log*
 # No ignores docker-compose.yml (sí se versiona)
 # Ignorar archivos locales de override si los usas
 docker-compose.override.yml
+nul 

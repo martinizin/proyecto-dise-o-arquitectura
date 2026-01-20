@@ -1,0 +1,68 @@
+1. Arquitectura y Ecosistema
+[ ] Multi-Sistema: La solución se compone de al menos 3 sistemas independientes interactuando entre sí.
+
+[ ] Funcionalidad: Se ha implementado la funcionalidad básica operativa de los sistemas.
+
+[ ] Patrones: La arquitectura responde claramente a los patrones de diseño seleccionados.
+
+2. Requisitos Técnicos (Implementación)
+[ ] Persistencia (Docker): Cuenta con una o varias capas de datos, y cada una está contenerizada en Docker.
+
+[ ] Serverless: Al menos una de las aplicaciones/componentes está implementada usando Lambdas (Server Functions).
+
+[ ] Mensajería: Se ha implementado un gestor de colas (Queue Manager) para la comunicación asíncrona entre microservicios/sistemas.
+
+[ ] API Gateway: Existe un punto de entrada centralizado (API Gateway) que expone los servicios.
+
+[ ] Interfaz REST: El Gateway recibe y responde mediante RESTful.
+
+3. Documentación y Estándares
+[ ] Swagger Hub: La exposición de servicios en el API Gateway está documentada y publicada en Swagger Hub.
+
+[ ] Swagger APIs: Las APIs individuales están documentadas con Swagger.
+
+[ ] Modelado C4: La solución está documentada utilizando el modelo C4 en Icepanel.
+
+[ ] Diagramas de Arquitectura: Existen diagramas que explican los estilos y patrones usados.
+
+[ ] Infraestructura: Se incluyen diagramas de infraestructura y despliegue.
+
+4. Análisis de Atributos de Calidad
+La arquitectura incluye un análisis explícito de:
+
+[ ] Caché
+
+[ ] Balanceo de carga
+
+[ ] Indexación
+
+[ ] Redundancia
+
+[ ] Disponibilidad
+
+[ ] Concurrencia
+
+[ ] Latencia
+
+[ ] Costo y Proyección
+
+[ ] Performance y Escalabilidad
+
+5. Criterios de Evaluación (Puntaje)
+Para uso del evaluador:
+
+[ ] (1.0 pt) Claridad de la arquitectura.
+
+[ ] (2.0 pt) Elección adecuada de patrones arquitectónicos.
+
+[ ] (2.0 pt) Diagramas precisos y claros.
+
+[ ] (2.0 pt) Correcta documentación (C4, Swagger, etc.).
+
+[ ] (3.0 pt) Funcionamiento y despliegue correcto.
+
+[ ] (0.5 pt) Extra: Diseño de CI/CD (Mantenibilidad).
+
+[ ] (0.5 pt) Extra: Implementación de Monitoreo.
+
+[ ] (0.5 pt) Extra: Gestión de la Complejidad.

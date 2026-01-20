@@ -2,8 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import { apiGet, apiPost } from "../api.js";
 
 function StatusBadge({ status }) {
-  const cls = status === "NOTIFIED" ? "ok" : "warn";
-  return <span className={`badge ${cls}`}>{status}</span>;
+  if (status === "NOTIFIED") {
+    return <span className="badge ok">NOTIFIED</span>;
+  }
+  if (status === "PENDING") {
+    return <span className="badge warn">PENDING</span>;
+  }
+  return <span className="badge">{status}</span>;
 }
 
 export default function Orders() {
@@ -31,6 +36,14 @@ export default function Orders() {
     fetchOrders();
   }, [fetchOrders]);
 
+  // Auto-refresh cada 5 segundos para ver cambios de Lambda
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchOrders();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [fetchOrders]);
+
   const handleCreate = async () => {
     if (!customerName.trim()) {
       setError("El nombre del cliente es requerido");
@@ -54,11 +67,17 @@ export default function Orders() {
     }
   };
 
+  const notifiedCount = orders.filter(o => o.status === "NOTIFIED").length;
+  const pendingCount = orders.filter(o => o.status === "PENDING").length;
+
   return (
     <div className="grid">
+      {/* Create Order Form */}
       <section className="card" style={{ gridColumn: "span 5" }}>
         <h3 className="h3">Crear pedido</h3>
-        <p className="small">Conectado al API Gateway: <code>/api/orders</code></p>
+        <p className="small">
+          Al crear un pedido se publica un evento a SQS que Lambda procesara.
+        </p>
 
         <div style={{ marginTop: "var(--space-4)", display: "grid", gap: "var(--space-4)" }}>
           <div>
@@ -118,19 +137,44 @@ export default function Orders() {
             </button>
           </div>
         </div>
+
+        {/* Event Flow Diagram */}
+        <div style={{ 
+          marginTop: "var(--space-4)", 
+          padding: "var(--space-3)", 
+          background: "var(--bg-secondary)", 
+          borderRadius: "var(--radius-md)",
+          fontSize: "11px"
+        }}>
+          <strong className="small">Flujo de Eventos:</strong>
+          <div style={{ marginTop: "var(--space-2)", fontFamily: "monospace" }}>
+            POST /orders → SQS → Lambda → PATCH /status → NOTIFIED
+          </div>
+        </div>
       </section>
 
+      {/* Orders List */}
       <section className="card" style={{ gridColumn: "span 7" }}>
-        <h3 className="h3">Listado de pedidos</h3>
-        <p className="small">Datos reales desde Order Service (puerto 8081).</p>
+        <div className="row" style={{ justifyContent: "space-between" }}>
+          <div>
+            <h3 className="h3">Listado de pedidos</h3>
+            <p className="small">Auto-refresh cada 5s para ver cambios de Lambda</p>
+          </div>
+          <div className="row">
+            <span className="badge ok">{notifiedCount} notificados</span>
+            <span className="badge warn">{pendingCount} pendientes</span>
+          </div>
+        </div>
 
-        {loading && <p className="small" style={{ marginTop: "var(--space-4)" }}>Cargando pedidos...</p>}
+        {loading && orders.length === 0 && (
+          <p className="small" style={{ marginTop: "var(--space-4)" }}>Cargando pedidos...</p>
+        )}
         
         {!loading && orders.length === 0 && !error && (
           <p className="small" style={{ marginTop: "var(--space-4)" }}>No hay pedidos. Crea el primero.</p>
         )}
 
-        {!loading && orders.length > 0 && (
+        {orders.length > 0 && (
           <table className="table" style={{ marginTop: "var(--space-4)" }}>
             <thead>
               <tr>
@@ -152,6 +196,41 @@ export default function Orders() {
             </tbody>
           </table>
         )}
+      </section>
+
+      {/* Info Card */}
+      <section className="card" style={{ gridColumn: "span 12" }}>
+        <h3 className="h3">Como funciona el sistema de eventos</h3>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "var(--space-4)", marginTop: "var(--space-3)" }}>
+          <div style={{ textAlign: "center", padding: "var(--space-3)" }}>
+            <div style={{ fontSize: "2rem", marginBottom: "var(--space-2)" }}>1</div>
+            <strong className="small">Crear Pedido</strong>
+            <p className="small" style={{ marginTop: "var(--space-1)" }}>
+              POST a Order Service, se guarda con estado PENDING
+            </p>
+          </div>
+          <div style={{ textAlign: "center", padding: "var(--space-3)" }}>
+            <div style={{ fontSize: "2rem", marginBottom: "var(--space-2)" }}>2</div>
+            <strong className="small">Publicar SQS</strong>
+            <p className="small" style={{ marginTop: "var(--space-1)" }}>
+              OrderEventPublisher envia mensaje a cola order-created
+            </p>
+          </div>
+          <div style={{ textAlign: "center", padding: "var(--space-3)" }}>
+            <div style={{ fontSize: "2rem", marginBottom: "var(--space-2)" }}>3</div>
+            <strong className="small">Lambda Procesa</strong>
+            <p className="small" style={{ marginTop: "var(--space-1)" }}>
+              Lambda consume el mensaje y procesa la notificacion
+            </p>
+          </div>
+          <div style={{ textAlign: "center", padding: "var(--space-3)" }}>
+            <div style={{ fontSize: "2rem", marginBottom: "var(--space-2)" }}>4</div>
+            <strong className="small">Actualizar Estado</strong>
+            <p className="small" style={{ marginTop: "var(--space-1)" }}>
+              Lambda llama PATCH /orders/id/status → NOTIFIED
+            </p>
+          </div>
+        </div>
       </section>
     </div>
   );
