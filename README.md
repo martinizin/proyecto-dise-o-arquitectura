@@ -2,9 +2,6 @@
 
 Este repositorio contiene el **ecosistema completo** para el proyecto de Arquitectura de Software, incluyendo microservicios, API Gateway, Frontend, mensajeria asincrona y funciones serverless.
 
-[![CI Pipeline](https://github.com/USER/proyecto-arquitectura/actions/workflows/ci.yml/badge.svg)](https://github.com/USER/proyecto-arquitectura/actions/workflows/ci.yml)
-[![Docker Build](https://github.com/USER/proyecto-arquitectura/actions/workflows/docker-build.yml/badge.svg)](https://github.com/USER/proyecto-arquitectura/actions/workflows/docker-build.yml)
-
 ---
 
 ## Stack y Tecnologias
@@ -42,10 +39,6 @@ Este repositorio contiene el **ecosistema completo** para el proyecto de Arquite
 
 ```
 proyecto-arquitectura/
-├── .github/
-│   └── workflows/           # CI/CD Pipelines
-│       ├── ci.yml           # Build y test
-│       └── docker-build.yml # Docker images
 ├── frontend/                # React + Vite (UI)
 │   ├── src/
 │   ├── Dockerfile
@@ -73,7 +66,6 @@ proyecto-arquitectura/
 │   ├── MONITOREO.md         # Documentacion Prometheus/Grafana
 │   ├── MODELADO_C4.md       # Guia para Icepanel
 │   ├── ATRIBUTOS_CALIDAD.md # Analisis de atributos de calidad
-│   ├── CI_CD.md             # Documentacion de pipelines
 │   ├── FASE1.md             # Conexion Frontend-APIs
 │   ├── FASE2.md             # Sistema de eventos SQS+Lambda
 │   ├── FASE3.md             # Cache Redis
@@ -214,40 +206,6 @@ Ver [docs/MONITOREO.md](docs/MONITOREO.md) para documentacion completa.
 
 ---
 
-## CI/CD
-
-El proyecto incluye pipelines de GitHub Actions para integracion y despliegue continuo.
-
-### Pipelines Disponibles
-
-| Pipeline | Trigger | Descripcion |
-|----------|---------|-------------|
-| **CI Pipeline** | Push/PR a main, develop | Build, test, validacion |
-| **Docker Build** | Push a main, tags | Build y push de imagenes |
-
-### Badges
-
-```markdown
-[![CI Pipeline](https://github.com/USER/proyecto-arquitectura/actions/workflows/ci.yml/badge.svg)](https://github.com/USER/proyecto-arquitectura/actions/workflows/ci.yml)
-```
-
-### Ejecutar CI Localmente
-
-```bash
-# Con act (https://github.com/nektos/act)
-act push -W .github/workflows/ci.yml
-```
-
-### Documentacion Completa
-
-Ver [docs/CI_CD.md](docs/CI_CD.md) para detalles completos sobre:
-- Jobs y stages
-- Dockerfiles
-- Variables y secretos
-- Proceso de release
-
----
-
 ## Dockerfiles
 
 Cada servicio incluye un Dockerfile optimizado con multi-stage build:
@@ -309,7 +267,6 @@ docker compose -f infra/docker-compose.yml build
 | [MONITOREO.md](docs/MONITOREO.md) | Stack de Prometheus y Grafana |
 | [MODELADO_C4.md](docs/MODELADO_C4.md) | Guia para crear modelo C4 en Icepanel |
 | [ATRIBUTOS_CALIDAD.md](docs/ATRIBUTOS_CALIDAD.md) | Analisis de cache, latencia, escalabilidad, etc. |
-| [CI_CD.md](docs/CI_CD.md) | Pipelines de GitHub Actions |
 | [FASE1.md](docs/FASE1.md) | Conexion Frontend con APIs |
 | [FASE2.md](docs/FASE2.md) | Sistema de eventos SQS + Lambda |
 | [FASE3.md](docs/FASE3.md) | Implementacion de Cache Redis |
@@ -362,8 +319,7 @@ VITE_API_URL=http://localhost:8080
 1. Crear branch desde `develop`
 2. Hacer cambios y commits
 3. Abrir Pull Request
-4. CI validara automaticamente
-5. Merge tras aprobacion
+4. Merge tras aprobacion
 
 ---
 
